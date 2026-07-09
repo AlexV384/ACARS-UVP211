@@ -1,0 +1,16 @@
+services:
+  postgis:
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    container_name: acars-postgis
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: acars
+      POSTGRES_USER: acars
+      POSTGRES_PASSWORD: acars
+    volumes:
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:
