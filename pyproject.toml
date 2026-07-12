@@ -3,9 +3,9 @@ name = "acars-collector"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "httpx",
-    "asyncpg",
-    "python-dotenv",
+    "httpx>=0.28.0,<1",
+    "asyncpg>=0.29.0,<1",
+    "python-dotenv>=1.0.0,<2",
 ]
 
 [project.optional-dependencies]
