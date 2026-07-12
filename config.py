@@ -40,3 +40,26 @@ AIRLINE_ICAO_CODES = [
     "ELY",  # El Al
     "HVN",  # Vietnam Airlines
 ]
+
+AIRLINE_IATA_CODES = [
+    "SU",  # Аэрофлот
+    "DP",  # Победа
+    "S7",  # S7 Airlines
+    "FV",  # Россия
+    "U6",  # Уральские авиалинии
+    "UT",  # Utair
+    "N4",  # Nordwind
+    "5N",  # Smartavia
+    "WZ",  # Red Wings
+    "A4",  # Азимут
+    "TK",  # Turkish Airlines
+    "EK",  # Emirates
+    "QR",  # Qatar Airways
+    "EY",  # Etihad Airways
+    "CA",  # Air China
+    "CZ",  # China Southern Airlines
+    "MS",  # EgyptAir
+    "ET",  # Ethiopian Airlines
+    "LY",  # El Al
+    "VN",  # Vietnam Airlines
+]
