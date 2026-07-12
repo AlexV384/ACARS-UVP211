@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_icao24_ts ON tracks (icao24, track_timestamp);
 CREATE INDEX IF NOT EXISTS idx_tracks_point ON tracks USING GIST (point);
 CREATE INDEX IF NOT EXISTS idx_tracks_callsign ON tracks (callsign);
@@ -45,9 +46,8 @@ async def init_db(pool: asyncpg.Pool):
         await conn.execute("CREATE EXTENSION IF NOT EXISTS postgis")
         await conn.execute(CREATE_TABLES_SQL)
 
-        count = await conn.fetchval("SELECT COUNT(*) FROM acars_stations")
-        if count == 0:
-            await _import_stations(conn)
+        await conn.execute("TRUNCATE acars_stations")
+        await _import_stations(conn)
 
 
 async def _import_stations(conn: asyncpg.Connection):

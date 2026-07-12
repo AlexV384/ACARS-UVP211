@@ -2,11 +2,14 @@ import asyncio
 import sys
 import time
 from datetime import datetime, timezone
-from config import COLLECT_INTERVAL, OPENSKY_PASSWORD, OPENSKY_USERNAME, COLLECTORS
+from config import (COLLECT_INTERVAL, OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET,
+                    COLLECTORS)
 from collectors.opensky import OpenSkyCollector
+from collectors.pocketworld import PocketWorldCollector
 from db.connection import get_pool
 from db.schema import init_db
 from db.writer import write_tracks
+
 from docker_utils import ensure_postgis_sync, wait_for_db
 from models.track import Track
 
@@ -45,15 +48,18 @@ async def main():
     pool = await get_pool()
     await init_db(pool)
 
-    collectors = [
-        OpenSkyCollector(username=OPENSKY_USERNAME, password=OPENSKY_PASSWORD),
-    ]
-    COLLECTORS.extend(collectors)
+    collector = OpenSkyCollector(client_id=OPENSKY_CLIENT_ID, client_secret=OPENSKY_CLIENT_SECRET)
+    collector2 = PocketWorldCollector()
+
+    COLLECTORS.append(collector)
+    COLLECTORS.append(collector2)
 
     print(f"starting collector loop, interval={COLLECT_INTERVAL}s")
     while True:
         t0 = time.monotonic()
+
         await collect_all(pool, COLLECTORS)
+
         elapsed = time.monotonic() - t0
         sleep = max(0, COLLECT_INTERVAL - elapsed)
         await asyncio.sleep(sleep)

@@ -11,8 +11,8 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD", "acars"),
 }
 
-OPENSKY_USERNAME = os.getenv("OPENSKY_USERNAME", "")
-OPENSKY_PASSWORD = os.getenv("OPENSKY_PASSWORD", "")
+OPENSKY_CLIENT_ID = os.getenv("OPENSKY_CLIENT_ID", "")
+OPENSKY_CLIENT_SECRET = os.getenv("OPENSKY_CLIENT_SECRET", "")
 
 COLLECT_INTERVAL = int(os.getenv("COLLECT_INTERVAL", 300))
 
