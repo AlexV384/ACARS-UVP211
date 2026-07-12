@@ -17,3 +17,26 @@ OPENSKY_PASSWORD = os.getenv("OPENSKY_PASSWORD", "")
 COLLECT_INTERVAL = int(os.getenv("COLLECT_INTERVAL", 300))
 
 COLLECTORS = []
+
+AIRLINE_ICAO_CODES = [
+    "AFL",  # Аэрофлот
+    "PBD",  # Победа
+    "SBI",  # S7 Airlines
+    "SDM",  # Россия
+    "SVR",  # Уральские авиалинии
+    "UTA",  # Utair
+    "NWS",  # Nordwind
+    "AUL",  # Smartavia
+    "RWZ",  # Red Wings
+    "AZO",  # Азимут
+    "THY",  # Turkish Airlines
+    "UAE",  # Emirates
+    "QTR",  # Qatar Airways
+    "ETD",  # Etihad Airways
+    "CCA",  # Air China
+    "CSN",  # China Southern Airlines
+    "MSR",  # EgyptAir
+    "ETH",  # Ethiopian Airlines
+    "ELY",  # El Al
+    "HVN",  # Vietnam Airlines
+]

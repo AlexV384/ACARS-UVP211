@@ -1,5 +1,6 @@
 import httpx
 from collectors.base import BaseCollector, RawTrack
+from config import AIRLINE_ICAO_CODES
 
 
 OPENSKY_URL = "https://opensky-network.org/api/states/all"
@@ -32,6 +33,10 @@ class OpenSkyCollector(BaseCollector):
             if not callsign:
                 continue
             callsign = callsign.strip()
+
+            prefix = callsign[:3].upper()
+            if prefix not in AIRLINE_ICAO_CODES:
+                continue
 
             lat = state[6]
             lon = state[5]
