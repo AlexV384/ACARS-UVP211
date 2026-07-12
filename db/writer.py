@@ -13,6 +13,7 @@ async def write_tracks(pool: asyncpg.Pool, tracks: list[Track]):
                                 altitude, velocity, track_timestamp, source, point)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
                     ST_SetSRID(ST_MakePoint($4, $3), 4326))
+            ON CONFLICT (icao24, track_timestamp) DO NOTHING
             """,
             [
                 (t.icao24, t.callsign, t.latitude, t.longitude,

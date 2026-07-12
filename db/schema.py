@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tracks_icao24_ts ON tracks (icao24, track_timestamp);
 CREATE INDEX IF NOT EXISTS idx_tracks_point ON tracks USING GIST (point);
 CREATE INDEX IF NOT EXISTS idx_tracks_callsign ON tracks (callsign);
 CREATE INDEX IF NOT EXISTS idx_tracks_timestamp ON tracks (track_timestamp);
