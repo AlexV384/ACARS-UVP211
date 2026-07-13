@@ -8,11 +8,19 @@ from config import AIRLINE_IATA_CODES
 FEED_URL = "https://aviaradar-client-api.arbina.com/api/aircrafts/feed?prediction_enabled=false&flight_number_enabled=true"
 MAIN_URL = "https://aviaradar.ru"
 
+CHROMIUM_ARGS = [
+    "--disable-dev-shm-usage",
+    "--no-sandbox",
+    "--disable-gpu",
+    "--disable-setuid-sandbox",
+]
+
 
 class AviaradarPlaywrightCollector(BaseCollector):
 
     def __init__(self):
         self._browser = None
+        self._pw = None
 
     def name(self) -> str:
         return "aviaradar"
@@ -21,9 +29,12 @@ class AviaradarPlaywrightCollector(BaseCollector):
         if self._browser is None:
             p = async_playwright()
             self._pw = await p.start()
-            self._browser = await self._pw.chromium.launch(headless=True)
+            self._browser = await self._pw.chromium.launch(
+                headless=True,
+                args=CHROMIUM_ARGS,
+            )
 
-    async def fetch(self) -> list[RawTrack]:
+    async def _safe_fetch(self) -> list[RawTrack]:
         await self._ensure_browser()
         page = await self._browser.new_page()
 
@@ -77,10 +88,31 @@ class AviaradarPlaywrightCollector(BaseCollector):
 
         return tracks
 
+    async def fetch(self) -> list[RawTrack]:
+        tries = 0
+        last_error = None
+        while tries < 2:
+            tries += 1
+            try:
+                return await self._safe_fetch()
+            except Exception as e:
+                last_error = e
+                print(f"[aviaradar] attempt {tries} failed: {e}")
+                await self.close()
+                if tries < 2:
+                    await asyncio.sleep(2)
+        raise last_error
+
     async def close(self):
         if self._browser:
-            await self._browser.close()
+            try:
+                await self._browser.close()
+            except Exception:
+                pass
             self._browser = None
-        if hasattr(self, '_pw'):
-            await self._pw.stop()
+        if self._pw:
+            try:
+                await self._pw.stop()
+            except Exception:
+                pass
             self._pw = None
