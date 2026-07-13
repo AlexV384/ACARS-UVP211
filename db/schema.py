@@ -46,6 +46,10 @@ async def init_db(pool: asyncpg.Pool):
         await conn.execute("CREATE EXTENSION IF NOT EXISTS postgis")
         await conn.execute(CREATE_TABLES_SQL)
 
+        await conn.execute(
+            "SELECT setval('tracks_id_seq', COALESCE((SELECT MAX(id) FROM tracks), 1))"
+        )
+
         await conn.execute("TRUNCATE acars_stations")
         await _import_stations(conn)
 
