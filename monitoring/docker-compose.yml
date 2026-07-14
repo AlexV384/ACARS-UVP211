@@ -1,0 +1,52 @@
+services:
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    pid: "host"
+    restart: unless-stopped
+    networks:
+      - monitoring
+    volumes:
+      - /:/host:ro
+      - /var/lib/node-exporter:/textfile:ro
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.textfile.directory=/textfile"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - monitoring
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: developer
+      GF_SECURITY_ADMIN_PASSWORD: acars
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID: server-status
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
