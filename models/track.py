@@ -40,3 +40,41 @@ class Track:
             )
             for row in rows
         ]
+
+
+async def get_acars_coverage(callsign: str) -> float:
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            WITH route AS (
+                SELECT ST_MakeLine(point ORDER BY track_timestamp) AS geom
+                FROM tracks WHERE callsign = $1
+            ), coverage AS (
+                SELECT ST_Union(ST_MakeValid(ST_Buffer(s.location::geography, 350000)::geometry)) AS geom
+                FROM acars_stations s
+            ), route_length AS (
+                SELECT ST_Length(r.geom::geography) AS total FROM route r
+            ), covered_length AS (
+                SELECT ST_Length(ST_Intersection(r.geom, c.geom)::geography) AS covered
+                FROM route r, coverage c
+            )
+            SELECT CASE WHEN total = 0 THEN 0 ELSE covered * 100.0 / total END
+            FROM covered_length, route_length
+            """,
+            callsign,
+        )
+
+    return float(row[0])
+
+
+async def get_all_callsigns() -> list[str]:
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT DISTINCT callsign FROM tracks WHERE callsign IS NOT NULL")
+
+    return [row["callsign"] for row in rows]
