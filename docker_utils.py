@@ -65,12 +65,15 @@ def create_and_start_container():
 
 
 async def wait_for_db(pool_factory, host: str = "localhost", port: int = 5432, timeout: float = 60.0):
+    import asyncpg
+    from config import DB_CONFIG
+
     t0 = asyncio.get_event_loop().time()
     last_err = None
     while asyncio.get_event_loop().time() - t0 < timeout:
         try:
-            pool = await pool_factory()
-            await pool.close()
+            conn = await asyncpg.connect(**DB_CONFIG, timeout=5)
+            await conn.close()
             return True
         except Exception as e:
             last_err = e
