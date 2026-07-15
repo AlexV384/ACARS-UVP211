@@ -1,9 +1,8 @@
 import asyncio
 import time
-import httpx
 from playwright.async_api import async_playwright
 from collectors.base import BaseCollector, RawTrack
-from config import AIRLINE_ICAO_CODES, OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET
+from config import AIRLINE_IATA_CODES
 
 
 FEED_URL = "https://aviaradar-client-api.arbina.com/api/aircrafts/feed?prediction_enabled=false&flight_number_enabled=true"
@@ -16,29 +15,31 @@ CHROMIUM_ARGS = [
     "--disable-setuid-sandbox",
 ]
 
-_operator_cache: dict[str, str | None] = {}
+_prefix_cache: dict[str, str | None] = {}
 
-async def _get_operator_icao(icao24: str) -> str | None:
-    if icao24 in _operator_cache:
-        return _operator_cache[icao24]
-    auth = httpx.BasicAuth(OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET)
-    url = f"https://opensky-network.org/api/metadata/aircraft/icao/{icao24}"
-    try:
-        async with httpx.AsyncClient(auth=auth, timeout=10) as client:
-            resp = await client.get(url)
-            if resp.status_code == 200:
-                data = resp.json()
-                op = data.get("operatorIcao") or data.get("operator")
-                _operator_cache[icao24] = op
-                return op
-    except Exception:
-        pass
 
-    _operator_cache[icao24] = None
+async def _get_prefix(icao24: str) -> str | None:
+    if icao24 in _prefix_cache:
+        return _prefix_cache[icao24]
+
+    from db.connection import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT callsign FROM tracks WHERE icao24 = $1 AND callsign IS NOT NULL AND callsign != '' LIMIT 1",
+            icao24,
+        )
+        if row:
+            prefix = row["callsign"][:2].upper()
+            _prefix_cache[icao24] = prefix
+            return prefix
+
+    _prefix_cache[icao24] = None
     return None
 
 
 class AviaradarPlaywrightCollector(BaseCollector):
+
     def __init__(self):
         self._browser = None
         self._pw = None
@@ -78,25 +79,18 @@ class AviaradarPlaywrightCollector(BaseCollector):
         finally:
             await page.close()
 
-        aircraft_list = data if isinstance(data, list) else []
-        unique_icao = {ac.get("hex_icao24", "").lower() for ac in aircraft_list}
-        unique_icao.discard("")
-        sem = asyncio.Semaphore(4)
-        async def _lookup(icao24: str) -> tuple[str, str | None]:
-            async with sem:
-                return icao24, await _get_operator_icao(icao24)
-        results = await asyncio.gather(*[_lookup(i) for i in unique_icao])
-        icao_to_op = dict(results)
         tracks: list[RawTrack] = []
         now_s = int(time.time())
 
-        for ac in aircraft_list:
+        for ac in data if isinstance(data, list) else []:
             icao24 = (ac.get("hex_icao24") or "").lower()
             if not icao24:
                 continue
-            op = icao_to_op.get(icao24)
-            if not op or op not in AIRLINE_ICAO_CODES:
+
+            prefix = await _get_prefix(icao24)
+            if not prefix or prefix not in AIRLINE_IATA_CODES:
                 continue
+
             raw = RawTrack()
             raw.icao24 = icao24
             raw.callsign = (ac.get("flight_number") or "").strip()
@@ -115,7 +109,6 @@ class AviaradarPlaywrightCollector(BaseCollector):
             tracks.append(raw)
 
         return tracks
-
     async def fetch(self) -> list[RawTrack]:
         tries = 0
         last_error = None
