@@ -5,7 +5,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Generator
 
 import httpx
 
@@ -42,13 +42,11 @@ class AdsbHistoricalCollector:
 
             logger.info(f"month {key}: start ({86400 // STEP} files)")
 
-            last_pos: dict[str, Tuple[float, float, float, float]] = {}
             sem = asyncio.Semaphore(CONCURRENCY)
             batch: list[Track] = []
             total_files = 86400 // STEP
             total_months = 121
             added_total = 0
-            skipped_total = 0
 
             client = httpx.AsyncClient(timeout=httpx.Timeout(HTTP_TIMEOUT))
 
@@ -57,16 +55,14 @@ class AdsbHistoricalCollector:
                 for file_index, offset in enumerate(range(0, 86400, STEP), start=1):
                     url = f"{BASE_URL}/{year}/{month:02d}/01/{offset_to_hms(offset)}Z.json.gz"
                     task = asyncio.create_task(
-                        process_one(url, sem, client, pool, last_pos, batch, file_index)
+                        process_one(url, sem, client, file_index)
                     )
                     tasks.append(task)
 
                 done = 0
                 for comp in asyncio.as_completed(tasks):
                     try:
-                        added, skipped = await comp
-                        added_total += added
-                        skipped_total += skipped
+                        tracks = await comp
                     except asyncio.CancelledError:
                         logger.warning("stopping remaining tasks")
                         for t in tasks:
@@ -76,7 +72,25 @@ class AdsbHistoricalCollector:
                         raise
                     except Exception as e:
                         logger.warning(f"task fail: {e}")
+                        done += 1
+                        continue
+
+                    batch.extend(tracks)
+                    added_total += len(tracks)
                     done += 1
+
+                    if len(batch) >= BATCH_SIZE:
+                        for attempt in range(3):
+                            try:
+                                await write_tracks(pool, batch)
+                                break
+                            except Exception as e:
+                                logger.warning(f"DB write failed: {e}")
+                                if attempt == 2:
+                                    raise
+                                await asyncio.sleep(5)
+                        batch.clear()
+
                     if done % 180 == 0 or done == total_files:
                         percent = done / total_files * 100
                         logger.info(f"   progress: {percent:.1f}% ({done}/{total_files})")
@@ -94,7 +108,7 @@ class AdsbHistoricalCollector:
                             raise
                         await asyncio.sleep(5)
 
-            logger.info(f" month {key}: done | written: {added_total} | dedup_skipped: {skipped_total}")
+            logger.info(f" month {key}: done | written: {added_total}")
 
             progress = load_progress()
             progress["processed"].append(key)
@@ -102,31 +116,30 @@ class AdsbHistoricalCollector:
             logger.info(f" progress saved: {len(progress['processed'])}/{total_months} months completed")
 
 
-async def process_one(url, sem, client, pool, last_pos, batch, file_index):
+async def process_one(url, sem, client, file_index) -> list[Track]:
     async with sem:
         try:
             content = await fetch_url(url, client)
             try:
                 data = json.loads(gzip.decompress(content))
-            except OSError as e:
+            except OSError:
                 try:
                     data = json.loads(content)
                 except Exception as ee:
                     logger.warning(f"   file {file_index}: failed to parse JSON: {ee}")
-                    return 0, 0
+                    return []
         except FileNotFoundError:
             logger.debug(f"   file {file_index}: 404 (no data for this offset)")
-            return 0, 0
+            return []
         except Exception as e:
             logger.warning(f"   fetch error: {e}")
-            return 0, 0
+            return []
 
         now = data.get("now")
         if not now:
-            return 0, 0
+            return []
 
-        added = 0
-        skipped = 0
+        tracks: list[Track] = []
 
         for ac in data.get("aircraft", []):
             flight = ac.get("flight")
@@ -157,11 +170,6 @@ async def process_one(url, sem, client, pool, last_pos, batch, file_index):
             if gs is not None:
                 gs = float(gs)
 
-            pos_key = (round(lat, 3), round(lon, 3), alt_baro, gs)
-            if last_pos.get(icao24) == pos_key:
-                continue
-            last_pos[icao24] = pos_key
-
             seen_pos = ac.get("seen_pos", 0.0)
             timestamp = datetime.fromtimestamp(now - seen_pos, tz=timezone.utc)
 
@@ -175,22 +183,9 @@ async def process_one(url, sem, client, pool, last_pos, batch, file_index):
                 timestamp=timestamp,
                 source=SOURCE
             )
-            batch.append(trak)
-            added += 1
+            tracks.append(trak)
 
-            if len(batch) >= BATCH_SIZE:
-                for attempt in range(3):
-                    try:
-                        await write_tracks(pool, batch)
-                        break
-                    except Exception as e:
-                        logger.warning(f"DB write failed: {e}")
-                        if attempt == 2:
-                            raise
-                        await asyncio.sleep(5)
-                batch.clear()
-
-        return added, skipped
+        return tracks
 
 async def fetch_url(url, client):
     backoff = [1, 3, 5]
@@ -259,7 +254,7 @@ def offset_to_hms(s: int) -> str:
     sec = s % 60
     return f"{hours:02d}{minutes:02d}{sec:02d}"
 
-def iterate_months(start: str = "2016-07", end: str = "2026-07") -> Generator[Tuple[int, int], None, None]:
+def iterate_months(start: str = "2016-07", end: str = "2026-07") -> Generator[tuple[int, int], None, None]:
     s_year, s_month = map(int, start.split("-"))
     e_year, e_month = map(int, end.split("-"))
 
