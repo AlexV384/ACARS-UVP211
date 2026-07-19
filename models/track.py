@@ -78,3 +78,23 @@ async def get_all_callsigns() -> list[str]:
         rows = await conn.fetch("SELECT DISTINCT callsign FROM tracks WHERE callsign IS NOT NULL")
 
     return [row["callsign"] for row in rows]
+
+
+async def get_track_distance(callsign: str) -> float:
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT COALESCE(
+                ST_Length(ST_MakeLine(point ORDER BY track_timestamp)::geography),
+                0
+            ) AS total_distance
+            FROM (SELECT 1) AS dummy
+            WHERE EXISTS (SELECT 1 FROM tracks WHERE callsign = $1)
+            """,
+            callsign,
+        )
+
+    return float(row["total_distance"]) if row else 0.0
