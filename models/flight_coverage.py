@@ -1,6 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Callable
 from models.track import get_acars_coverage, Track, get_track_distance, get_all_callsigns
 
 
@@ -28,49 +29,86 @@ class FlightCoverage:
             total_length_m=await get_track_distance(callsign),
             updated_at=datetime.now(timezone.utc)
         )
+
+
 async def ensure_table(conn) -> None:
     await conn.execute("""CREATE TABLE IF NOT EXISTS flight_coverage (
-        callsign TEXT, 
-        flight_date DATE, 
-        source TEXT, 
-        coverage_pct DOUBLE PRECISION, 
-        total_length_m DOUBLE PRECISION, 
+        callsign TEXT,
+        flight_date DATE,
+        source TEXT,
+        coverage_pct DOUBLE PRECISION,
+        total_length_m DOUBLE PRECISION,
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         PRIMARY KEY (callsign, flight_date)
     )""")
 
 
-async def upsert_coverage(conn, inst: FlightCoverage) -> None:
-    await conn.execute(
-        """INSERT INTO flight_coverage (callsign, flight_date, source, coverage_pct, total_length_m, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (callsign, flight_date) DO UPDATE SET
-            source = EXCLUDED.source,
-            coverage_pct = EXCLUDED.coverage_pct,
-            total_length_m = EXCLUDED.total_length_m,
-            updated_at = EXCLUDED.updated_at""",
-        inst.callsign, inst.flight_date, inst.source,
-        inst.coverage_pct, inst.total_length_m, inst.updated_at
-    )
+UPSERT_BATCH_COVERAGE_SQL = """
+WITH route AS (
+    SELECT callsign, ST_MakeLine(point ORDER BY track_timestamp) AS geom
+    FROM tracks
+    WHERE callsign = ANY($1::text[])
+    GROUP BY callsign
+),
+coverage AS (
+    SELECT ST_Union(ST_MakeValid(ST_Buffer(s.location::geography, 350000)::geometry)) AS geom
+    FROM acars_stations s
+),
+route_metrics AS (
+    SELECT
+        r.callsign,
+        ST_Length(r.geom::geography) AS total_length_m,
+        CASE WHEN ST_Length(r.geom::geography) = 0 THEN 0
+             ELSE ST_Length(ST_Intersection(r.geom, c.geom)::geography) * 100.0
+                  / ST_Length(r.geom::geography)
+        END AS coverage_pct
+    FROM route r, coverage c
+),
+track_meta AS (
+    SELECT DISTINCT ON (callsign)
+        callsign,
+        track_timestamp::date AS flight_date,
+        source
+    FROM tracks
+    WHERE callsign = ANY($1::text[])
+    ORDER BY callsign, track_timestamp DESC
+)
+INSERT INTO flight_coverage (callsign, flight_date, source, coverage_pct, total_length_m, updated_at)
+SELECT
+    m.callsign,
+    t.flight_date,
+    t.source,
+    m.coverage_pct,
+    m.total_length_m,
+    NOW()
+FROM route_metrics m
+JOIN track_meta t ON m.callsign = t.callsign
+ON CONFLICT (callsign, flight_date) DO UPDATE SET
+    source = EXCLUDED.source,
+    coverage_pct = EXCLUDED.coverage_pct,
+    total_length_m = EXCLUDED.total_length_m,
+    updated_at = EXCLUDED.updated_at
+"""
 
 
-async def update_coverage_batch(callsigns: list[str], batch_size: int = 50) -> None:
+async def update_all_coverage(
+    batch_size: int = 20000,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> None:
     from db.connection import get_pool
+
+    callsigns = await get_all_callsigns()
+    total = len(callsigns)
     pool = await get_pool()
+
     async with pool.acquire() as conn:
         await ensure_table(conn)
-        for i in range(0, len(callsigns), batch_size):
-            print(f'Progress: {i} of {len(callsigns)}')
-            batch = callsigns[i:i + batch_size]
-            async with conn.transaction():
-                for callsign in batch:
-                    inst = await FlightCoverage.from_callsign(callsign)
-                    await upsert_coverage(conn, inst)
+        for i in range(0, total, batch_size):
+            batch = callsigns[i : i + batch_size]
+            await conn.execute(UPSERT_BATCH_COVERAGE_SQL, batch)
+            if on_progress:
+                on_progress(min(i + batch_size, total), total)
 
 
-async def update_all_coverage() -> None:
-    callsigns = await get_all_callsigns()
-    await update_coverage_batch(callsigns)
-
-if __name__ == '__main__': # For testing only
-    asyncio.run(update_all_coverage())
+if __name__ == '__main__':
+    asyncio.run(update_all_coverage(on_progress=lambda done, total: print(f"{done}/{total}")))
