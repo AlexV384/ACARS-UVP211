@@ -101,7 +101,11 @@ async def get_all_callsigns() -> list[str]:
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT DISTINCT callsign FROM tracks WHERE callsign IS NOT NULL AND TRIM(callsign) != '' AND callsign NOT IN ('0', '0000', '00000', '0000000', '00000000')")
+        rows = await conn.fetch(
+            "SELECT DISTINCT callsign FROM tracks"
+            " WHERE callsign ~ '^[A-Za-z0-9]{2,8}$'"
+            "   AND callsign !~ '^[0-9]+$'"
+        )
 
     return [row["callsign"] for row in rows]
 

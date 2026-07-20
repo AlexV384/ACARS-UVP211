@@ -1,5 +1,16 @@
+import re
 from abc import ABC, abstractmethod
 from typing import Any
+
+
+_VALID_CALLSIGN = re.compile(r'^(?![0-9]+$)[A-Za-z0-9]{2,8}$')
+
+
+def is_valid_callsign(callsign: str | None) -> bool:
+    if not callsign:
+        return False
+    callsign = callsign.strip()
+    return bool(_VALID_CALLSIGN.match(callsign))
 
 
 class RawTrack:

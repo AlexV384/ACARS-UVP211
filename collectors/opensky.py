@@ -1,7 +1,7 @@
 import asyncio
 import time
 import httpx
-from collectors.base import BaseCollector, RawTrack
+from collectors.base import BaseCollector, RawTrack, is_valid_callsign
 from config import AIRLINE_ICAO_CODES
 
 
@@ -66,6 +66,8 @@ class OpenSkyCollector(BaseCollector):
             if not callsign:
                 continue
             callsign = callsign.strip()
+            if not is_valid_callsign(callsign):
+                continue
 
             prefix = callsign[:3].upper()
             if prefix not in AIRLINE_ICAO_CODES:

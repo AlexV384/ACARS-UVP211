@@ -1,7 +1,7 @@
 import asyncio
 import time
 from playwright.async_api import async_playwright
-from collectors.base import BaseCollector, RawTrack
+from collectors.base import BaseCollector, RawTrack, is_valid_callsign
 from config import AIRLINE_IATA_CODES
 
 
@@ -91,9 +91,13 @@ class AviaradarPlaywrightCollector(BaseCollector):
             if not prefix or prefix not in AIRLINE_IATA_CODES:
                 continue
 
+            callsign_val = (ac.get("flight_number") or "").strip()
+            if not is_valid_callsign(callsign_val):
+                continue
+
             raw = RawTrack()
             raw.icao24 = icao24
-            raw.callsign = (ac.get("flight_number") or "").strip()
+            raw.callsign = callsign_val
             raw.latitude = ac.get("latitude")
             raw.longitude = ac.get("longitude")
             raw.altitude = ac.get("altitude_ft")

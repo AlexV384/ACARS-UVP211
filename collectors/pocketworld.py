@@ -1,6 +1,6 @@
 import time
 import httpx
-from collectors.base import BaseCollector, RawTrack
+from collectors.base import BaseCollector, RawTrack, is_valid_callsign
 from config import AIRLINE_ICAO_CODES
 
 
@@ -27,7 +27,7 @@ class PocketWorldCollector(BaseCollector):
 
         for f in data.get("flights", []):
             callsign = (f.get("callsign") or "").strip()
-            if not callsign:
+            if not is_valid_callsign(callsign):
                 continue
 
             prefix = callsign[:3].upper()

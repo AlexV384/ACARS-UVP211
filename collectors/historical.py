@@ -9,6 +9,7 @@ from typing import Generator
 
 import httpx
 
+from collectors.base import is_valid_callsign
 from config import AIRLINE_ICAO_CODES
 from db.writer import write_tracks
 from models.track import Track
@@ -146,7 +147,7 @@ async def process_one(url, sem, client, file_index) -> list[Track]:
             if not flight:
                 continue
             callsign = flight.strip()
-            if len(callsign) < 3:
+            if not is_valid_callsign(callsign):
                 continue
             if callsign[:3].upper() not in AIRLINE_ICAO_CODES:
                 continue
