@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
-from models.track import get_acars_coverage, Track, get_track_distance, get_all_callsigns
+from models.track import get_acars_coverage, Track, get_track_distance, get_all_callsigns, update_station_coverage
 
 
 @dataclass
@@ -50,19 +50,16 @@ WITH route AS (
     WHERE callsign = ANY($1::text[])
     GROUP BY callsign
 ),
-coverage AS (
-    SELECT ST_Union(ST_MakeValid(ST_Buffer(s.location::geography, 350000)::geometry)) AS geom
-    FROM acars_stations s
-),
 route_metrics AS (
     SELECT
         r.callsign,
         ST_Length(r.geom::geography) AS total_length_m,
         CASE WHEN ST_Length(r.geom::geography) = 0 THEN 0
-             ELSE ST_Length(ST_Intersection(r.geom, c.geom)::geography) * 100.0
+             ELSE ST_Length(ST_Intersection(r.geom, s.geom)::geography) * 100.0
                   / ST_Length(r.geom::geography)
         END AS coverage_pct
-    FROM route r, coverage c
+    FROM route r, station_coverage s
+    WHERE s.id = 1
 ),
 track_meta AS (
     SELECT DISTINCT ON (callsign)
@@ -92,11 +89,12 @@ ON CONFLICT (callsign, flight_date) DO UPDATE SET
 
 
 async def update_all_coverage(
-    batch_size: int = 20000,
+    batch_size: int = 10,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> None:
     from db.connection import get_pool
 
+    await update_station_coverage()
     callsigns = await get_all_callsigns()
     total = len(callsigns)
     pool = await get_pool()

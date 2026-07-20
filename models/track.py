@@ -42,6 +42,34 @@ class Track:
         ]
 
 
+async def ensure_station_coverage_table(conn) -> None:
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS station_coverage (
+            id INT PRIMARY KEY DEFAULT 1,
+            geom GEOMETRY(MultiPolygon, 4326),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+
+
+async def update_station_coverage() -> None:
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await ensure_station_coverage_table(conn)
+        await conn.execute("""
+            INSERT INTO station_coverage (id, geom, updated_at)
+            VALUES (1, (
+                SELECT ST_Union(ST_MakeValid(ST_Buffer(s.location::geography, 350000)::geometry))
+                FROM acars_stations s
+            ), NOW())
+            ON CONFLICT (id) DO UPDATE SET
+                geom = EXCLUDED.geom,
+                updated_at = EXCLUDED.updated_at
+        """)
+
+
 async def get_acars_coverage(callsign: str) -> float:
     from db.connection import get_pool
 
@@ -52,14 +80,12 @@ async def get_acars_coverage(callsign: str) -> float:
             WITH route AS (
                 SELECT ST_MakeLine(point ORDER BY track_timestamp) AS geom
                 FROM tracks WHERE callsign = $1
-            ), coverage AS (
-                SELECT ST_Union(ST_MakeValid(ST_Buffer(s.location::geography, 350000)::geometry)) AS geom
-                FROM acars_stations s
             ), route_length AS (
                 SELECT ST_Length(r.geom::geography) AS total FROM route r
             ), covered_length AS (
-                SELECT ST_Length(ST_Intersection(r.geom, c.geom)::geography) AS covered
-                FROM route r, coverage c
+                SELECT ST_Length(ST_Intersection(r.geom, s.geom)::geography) AS covered
+                FROM route r, station_coverage s
+                WHERE s.id = 1
             )
             SELECT CASE WHEN total = 0 THEN 0 ELSE covered * 100.0 / total END
             FROM covered_length, route_length
@@ -75,7 +101,7 @@ async def get_all_callsigns() -> list[str]:
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT DISTINCT callsign FROM tracks WHERE callsign IS NOT NULL")
+        rows = await conn.fetch("SELECT DISTINCT callsign FROM tracks WHERE callsign IS NOT NULL AND TRIM(callsign) != '' AND callsign NOT IN ('0', '0000', '00000', '0000000', '00000000')")
 
     return [row["callsign"] for row in rows]
 
