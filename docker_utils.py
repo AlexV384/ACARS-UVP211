@@ -34,12 +34,17 @@ def docker_daemon_running() -> bool:
 
 
 def _compose_up():
-    _set_compose_dir()
     rc, out, err = _run(["docker", "compose", "-f", os.path.join(COMPOSE_DIR, COMPOSE_FILE), "up", "-d"])
     if rc != 0:
         print(f"  docker compose up failed: {err}")
         return False
     return True
+
+
+def _stop_old_monitoring():
+    old = os.path.join(COMPOSE_DIR, "monitoring", "docker-compose.yml")
+    if os.path.isfile(old):
+        _run(["docker", "compose", "-f", old, "down"])
 
 
 async def wait_for_db(pool_factory, host: str = "localhost", port: int = 5432, timeout: float = 60.0):
@@ -69,6 +74,12 @@ def ensure_postgis_sync():
         sys.exit(1)
 
     print("[docker] starting containers (postgis, grafana, prometheus, node-exporter)...")
+
+    _set_compose_dir()
+
+    # Stop old monitoring stack from monitoring/docker-compose.yml if present
+    # (prevents container name conflicts with the merged compose file)
+    _stop_old_monitoring()
 
     if not _compose_up():
         print("  failed to start containers")
