@@ -1,9 +1,10 @@
 import asyncio
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 COMPOSE_FILE = "docker-compose.yml"
-CONTAINER_NAME = "acars-postgis"
 COMPOSE_DIR = None
 
 
@@ -18,10 +19,8 @@ def _run(cmd: list[str]) -> tuple[int, str, str]:
 
 
 def _set_compose_dir():
-    import inspect
     global COMPOSE_DIR
-    p = inspect.getfile(lambda: None)
-    COMPOSE_DIR = str(p).rsplit("/", 1)[0] if "/" in str(p) else "."
+    COMPOSE_DIR = str(Path(__file__).resolve().parent)
 
 
 def docker_available() -> bool:
@@ -34,33 +33,12 @@ def docker_daemon_running() -> bool:
     return rc == 0
 
 
-def container_exists() -> bool:
-    rc, out, _ = _run(["docker", "ps", "-a", "--filter", f"name=^{CONTAINER_NAME}$", "--format", "{{.Names}}"])
-    return rc == 0 and out == CONTAINER_NAME
-
-
-def container_running() -> bool:
-    rc, out, _ = _run(["docker", "ps", "--filter", f"name=^{CONTAINER_NAME}$", "--format", "{{.Names}}"])
-    return rc == 0 and out == CONTAINER_NAME
-
-
-def start_container():
-    rc, out, err = _run(["docker", "start", CONTAINER_NAME])
-    if rc != 0:
-        print(f"  docker start failed: {err}")
-        return False
-    print(f"  started existing container")
-    return True
-
-
-def create_and_start_container():
-    import os
+def _compose_up():
     _set_compose_dir()
     rc, out, err = _run(["docker", "compose", "-f", os.path.join(COMPOSE_DIR, COMPOSE_FILE), "up", "-d"])
     if rc != 0:
         print(f"  docker compose up failed: {err}")
         return False
-    print(f"  container created and started")
     return True
 
 
@@ -90,18 +68,10 @@ def ensure_postgis_sync():
         print("Docker daemon is not running. Start Docker Desktop and re-run this script.")
         sys.exit(1)
 
-    if container_running():
-        return
+    print("[docker] starting containers (postgis, grafana, prometheus, node-exporter)...")
 
-    print("[docker] postgis container not running, starting...")
-
-    if container_exists():
-        ok = start_container()
-    else:
-        ok = create_and_start_container()
-
-    if not ok:
-        print("  failed to start postgis container")
+    if not _compose_up():
+        print("  failed to start containers")
         sys.exit(1)
 
     print("  waiting for postgis to accept connections...")
