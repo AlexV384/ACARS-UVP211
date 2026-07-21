@@ -89,7 +89,7 @@ ON CONFLICT (callsign, flight_date) DO UPDATE SET
 
 
 async def update_all_coverage(
-    batch_size: int = 10,
+    batch_size: int = 20000,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> None:
     from db.connection import get_pool
