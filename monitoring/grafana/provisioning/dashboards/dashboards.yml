@@ -9,3 +9,12 @@ providers:
     updateIntervalSeconds: 30
     options:
       path: /etc/grafana/provisioning/dashboards
+
+  - name: 'Public'
+    orgId: 1
+    folder: 'ACARS'
+    type: file
+    disableDeletion: false
+    editable: false
+    options:
+      path: /etc/grafana/provisioning/dashboards
