@@ -8,7 +8,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "All Flights",
+      "title": "Всего рейсов",
       "type": "stat",
       "gridPos": {"h": 4, "w": 3, "x": 0, "y": 0},
       "targets": [
@@ -22,7 +22,7 @@
     },
     {
       "id": 2,
-      "title": "Airlines",
+      "title": "Авиакомпаний",
       "type": "stat",
       "gridPos": {"h": 4, "w": 3, "x": 3, "y": 0},
       "targets": [
@@ -36,9 +36,9 @@
     },
     {
       "id": 3,
-      "title": "Overall Coverage %",
+      "title": "Общее покрытие %",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 3, "x": 6, "y": 0},
+      "gridPos": {"h": 4, "w": 4, "x": 6, "y": 0},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
@@ -63,9 +63,9 @@
     },
     {
       "id": 4,
-      "title": "Active Flights (10 min)",
+      "title": "Активных рейсов (10 мин)",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 3, "x": 9, "y": 0},
+      "gridPos": {"h": 4, "w": 3, "x": 10, "y": 0},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
@@ -76,131 +76,124 @@
       ]
     },
     {
-      "id": 5,
-      "title": "Coverage Map",
-      "type": "geomap",
-      "gridPos": {"h": 16, "w": 12, "x": 0, "y": 4},
+      "id": 12,
+      "title": "Покрытие 1 год",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 13, "y": 0},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT code AS name, ST_AsText(buffer) AS geom FROM acars_stations;",
-          "refId": "A"
-        },
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 1 Year\" FROM airline_coverage WHERE time_period = '1year';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Покрытие 2 года",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 3, "x": 17, "y": 0},
+      "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT icao24, callsign, altitude, ST_AsText(point) AS geom FROM tracks WHERE track_timestamp > now() - interval '10 min' AND point IS NOT NULL LIMIT 1000;",
-          "refId": "B"
-        },
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 2 Years\" FROM airline_coverage WHERE time_period = '2years';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Покрытие 5 лет",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT code, city, ST_AsText(location) AS geom FROM acars_stations;",
-          "refId": "C"
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 5 Years\" FROM airline_coverage WHERE time_period = '5years';"
         }
       ],
-      "layers": [
-        {
-          "id": "buffers",
-          "type": "markers",
-          "name": "Station Buffers",
-          "config": {
-            "dataFrame": "A",
-            "geomField": "geom",
-            "style": {
-              "fillColor": "#00BFFF",
-              "fillOpacity": 0.15,
-              "lineColor": "#00BFFF",
-              "lineWidth": 1
-            }
-          }
-        },
-        {
-          "id": "tracks",
-          "type": "markers",
-          "name": "Active Tracks",
-          "config": {
-            "dataFrame": "B",
-            "geomField": "geom",
-            "style": {
-              "markerSize": 6,
-              "colorBy": "callsign"
-            }
-          }
-        },
-        {
-          "id": "stations",
-          "type": "markers",
-          "name": "Stations",
-          "config": {
-            "dataFrame": "C",
-            "geomField": "geom",
-            "style": {
-              "markerType": "star",
-              "markerColor": "#FF0000",
-              "markerSize": 14
-            },
-            "tooltip": {
-              "fields": ["code", "city"]
-            }
-          }
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
         }
-      ],
-      "map": {
-        "center": {"lat": 55, "lng": 55, "zoom": 3}
       }
     },
     {
       "id": 6,
-      "title": "Coverage by Airline",
-      "type": "bargauge",
-      "gridPos": {"h": 16, "w": 6, "x": 12, "y": 4},
+      "title": "Покрытие по авиакомпаниям",
+      "type": "barchart",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' AND avg_coverage_pct IS NOT NULL ORDER BY avg_coverage_pct DESC;"
+          "rawSql": "SELECT airline_code AS metric, avg_coverage_pct FROM airline_coverage WHERE time_period = 'all' AND avg_coverage_pct IS NOT NULL ORDER BY avg_coverage_pct DESC;"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "displayMode": "gradient",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 30},
-              {"color": "green", "value": 70}
-            ]
-          }
+          "min": 0,
+          "max": 100
         }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "groupWidth": 20,
+        "barWidth": 0.9,
+        "showValue": "always",
+        "colorByField": "metric"
       }
     },
     {
-      "id": 7,
-      "title": "Flight Count by Source",
-      "type": "piechart",
-      "gridPos": {"h": 16, "w": 6, "x": 18, "y": 4},
+      "id": 10,
+      "title": "Последние рейсы",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT fc.source, count(*) AS value\nFROM flight_coverage fc\n  JOIN airline_coverage ac ON substring(fc.callsign from 1 for 3) = ac.airline_code\nWHERE ac.time_period = '$time_period'\nGROUP BY fc.source;"
+          "rawSql": "SELECT callsign, flight_date, source, coverage_pct, total_length_m/1000 AS route_km\nFROM flight_coverage\nWHERE total_length_m > 0\nORDER BY updated_at DESC\nLIMIT 50;"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "from": 0,
+                "to": 0,
+                "result": {"text": "N/A", "color": "gray"}
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": 8,
-      "title": "Coverage % over Time",
+      "title": "Покрытие % по времени",
       "type": "timeseries",
-      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 20},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
@@ -224,9 +217,9 @@
     },
     {
       "id": 9,
-      "title": "Tracks per Source over Time",
+      "title": "Треки по источникам по времени",
       "type": "timeseries",
-      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 20},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
@@ -269,117 +262,81 @@
       }
     },
     {
-      "id": 10,
-      "title": "Recent Flights",
-      "type": "table",
-      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 30},
+      "id": 7,
+      "title": "Рейсов по источникам",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 38},
       "targets": [
         {
           "datasource": {"uid": "postgres-public", "type": "postgres"},
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT callsign, flight_date, source, coverage_pct, total_length_m/1000 AS route_km\nFROM flight_coverage\nWHERE total_length_m > 0\nORDER BY updated_at DESC\nLIMIT 50;"
+          "rawSql": "SELECT SUM(CASE WHEN source = 'opensky' THEN 1 ELSE 0 END) AS opensky, SUM(CASE WHEN source = 'pocketworld' THEN 1 ELSE 0 END) AS pocketworld, SUM(CASE WHEN source = 'aviaradar' THEN 1 ELSE 0 END) AS aviaradar FROM flight_coverage;"
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "from": 0,
-                "to": 0,
-                "result": {"text": "N/A", "color": "gray"}
-              }
+      "options": {
+        "displayLabels": ["name", "percent", "value"],
+        "pieType": "pie",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value", "percent"]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Карта покрытия",
+      "type": "geomap",
+      "gridPos": {"h": 16, "w": 24, "x": 0, "y": 46},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT code, city, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM acars_stations;",
+          "refId": "A"
+        },
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT icao24, callsign, altitude, ST_X(point::geometry) AS longitude, ST_Y(point::geometry) AS latitude FROM tracks WHERE track_timestamp > now() - interval '10 min' AND point IS NOT NULL LIMIT 1000;",
+          "refId": "B"
+        }
+      ],
+      "layers": [
+        {
+          "type": "markers",
+          "name": "Stations",
+          "config": {
+            "dataFrame": "A",
+            "latitudeField": "latitude",
+            "longitudeField": "longitude",
+            "style": {
+              "color": "#FF0000",
+              "size": 10
+            },
+            "tooltip": true
+          }
+        },
+        {
+          "type": "markers",
+          "name": "Active Tracks",
+          "config": {
+            "dataFrame": "B",
+            "latitudeField": "latitude",
+            "longitudeField": "longitude",
+            "style": {
+              "size": 5,
+              "color": "#FFFF00"
             }
-          ]
-        }
-      }
-    },
-    {
-      "id": 11,
-      "title": "Airline Ranking",
-      "type": "bargauge",
-      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 30},
-      "targets": [
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' AND avg_coverage_pct IS NOT NULL ORDER BY avg_coverage_pct DESC;"
+          }
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "displayMode": "basic",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 30},
-              {"color": "green", "value": 70}
-            ]
-          },
-          "reverse": true
-        }
-      }
-    },
-    {
-      "id": 12,
-      "title": "Coverage 1 Year",
-      "type": "stat",
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 40},
-      "targets": [
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 1 Year\" FROM airline_coverage WHERE time_period = '1year';"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        }
-      }
-    },
-    {
-      "id": 13,
-      "title": "Coverage 2 Years",
-      "type": "stat",
-      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 40},
-      "targets": [
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 2 Years\" FROM airline_coverage WHERE time_period = '2years';"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        }
-      }
-    },
-    {
-      "id": 14,
-      "title": "Coverage 5 Years",
-      "type": "stat",
-      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 40},
-      "targets": [
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 5 Years\" FROM airline_coverage WHERE time_period = '5years';"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        }
+      "map": {
+        "center": {"lat": 55, "lng": 55, "zoom": 3}
       }
     }
   ],
