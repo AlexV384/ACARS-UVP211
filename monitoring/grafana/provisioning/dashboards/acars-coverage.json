@@ -1,815 +1,407 @@
 {
-  "dashboard": {
-    "title": "ACARS Coverage Dashboard",
-    "uid": "acars-coverage",
-    "editable": false,
-    "refresh": "10s",
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "All Flights",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 3,
-          "x": 0,
-          "y": 0
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT count(*) AS value FROM flight_coverage",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 2,
-        "title": "Airlines",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 3,
-          "x": 3,
-          "y": 0
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT count(DISTINCT airline_code) AS value FROM airline_coverage WHERE time_period = 'all'",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 3,
-        "title": "Overall Coverage %",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 3,
-          "x": 6,
-          "y": 0
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT avg(avg_coverage_pct) AS value FROM airline_coverage WHERE time_period = 'all'",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 4,
-        "title": "Active Flights",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 3,
-          "x": 9,
-          "y": 0
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT count(DISTINCT callsign) AS value FROM tracks WHERE track_timestamp > now() - interval '10 min' AND callsign IS NOT NULL",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 5,
-        "title": "Geomap",
-        "type": "geomap",
-        "gridPos": {
-          "h": 16,
-          "w": 12,
-          "x": 0,
-          "y": 8
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT code AS name, ST_AsText(buffer) AS geom FROM acars_stations",
-            "refId": "A"
-          },
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT icao24, callsign, altitude, ST_AsText(point) AS geom FROM tracks WHERE track_timestamp > now() - interval '10 min' AND point IS NOT NULL",
-            "refId": "B"
-          },
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT code, city, ST_AsText(location) AS geom FROM acars_stations",
-            "refId": "C"
-          }
-        ],
-        "options": {
-          "view": {
-            "id": "coordinates",
-            "lat": 55,
-            "lon": 55,
-            "zoom": 3
-          },
-          "controls": {
-            "showZoom": true,
-            "showAttribution": true
-          },
-          "layers": [
-            {
-              "id": "buffers",
-              "type": "markers",
-              "name": "Buffers",
-              "config": {
-                "data": {
-                  "query": "A",
-                  "format": "table",
-                  "geometry": {
-                    "field": "geom",
-                    "format": "wkt"
-                  }
-                },
-                "style": {
-                  "fillColor": "#00BFFF",
-                  "fillOpacity": 0.15,
-                  "lineColor": "#00BFFF",
-                  "lineWidth": 1
-                }
-              }
-            },
-            {
-              "id": "tracks",
-              "type": "markers",
-              "name": "Tracks",
-              "config": {
-                "data": {
-                  "query": "B",
-                  "format": "table",
-                  "geometry": {
-                    "field": "geom",
-                    "format": "wkt"
-                  }
-                },
-                "style": {
-                  "markerSize": 6,
-                  "markerColor": "callsign"
-                }
-              }
-            },
-            {
-              "id": "stations",
-              "type": "markers",
-              "name": "Stations",
-              "config": {
-                "data": {
-                  "query": "C",
-                  "format": "table",
-                  "geometry": {
-                    "field": "geom",
-                    "format": "wkt"
-                  }
-                },
-                "style": {
-                  "markerSize": 14,
-                  "markerColor": "#FF0000",
-                  "symbol": "star"
-                },
-                "tooltip": {
-                  "fields": ["code", "city"]
-                }
-              }
-            }
-          ]
-        },
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        }
-      },
-      {
-        "id": 6,
-        "title": "Coverage by Airline",
-        "type": "bargauge",
-        "gridPos": {
-          "h": 16,
-          "w": 6,
-          "x": 12,
-          "y": 8
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' ORDER BY avg_coverage_pct DESC",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "displayMode": "gradient",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "showUnfilled": true
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 7,
-        "title": "Flight Count by Source",
-        "type": "piechart",
-        "gridPos": {
-          "h": 16,
-          "w": 6,
-          "x": 18,
-          "y": 8
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT fc.source, count(*) AS value FROM flight_coverage fc JOIN airline_coverage ac ON fc.airline_code = ac.airline_code WHERE ac.time_period = '$time_period' GROUP BY fc.source",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "displayLabels": ["name", "percent"],
-          "legend": {
-            "displayMode": "list",
-            "placement": "bottom"
-          },
-          "pieType": "pie",
-          "reduceOptions": {
-            "calcs": ["sum"],
-            "fields": "",
-            "values": false
-          },
-          "tooltip": {
-            "mode": "single"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 8,
-        "title": "Coverage % over Time",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 12,
-          "w": 8,
-          "x": 0,
-          "y": 24
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "time_series",
-            "rawSql": "SELECT hour AS time, avg_coverage_pct AS value FROM coverage_history ORDER BY hour",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "legend": {
-            "calcs": ["mean", "lastNotNull"],
-            "displayMode": "list",
-            "placement": "bottom"
-          },
-          "tooltip": {
-            "mode": "single"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 9,
-        "title": "Tracks per Source over Time",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 12,
-          "w": 8,
-          "x": 8,
-          "y": 24
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "time_series",
-            "rawSql": "SELECT $__timeGroup(track_timestamp, '1m') AS time, source, count(*) AS value FROM tracks WHERE $__timeFilter(track_timestamp) GROUP BY 1, 2 ORDER BY 1",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "legend": {
-            "calcs": ["mean", "lastNotNull"],
-            "displayMode": "list",
-            "placement": "bottom"
-          },
-          "tooltip": {
-            "mode": "multi"
-          },
-          "stacking": {
-            "mode": "normal"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 10,
-        "title": "Recent Flights",
-        "type": "table",
-        "gridPos": {
-          "h": 12,
-          "w": 8,
-          "x": 16,
-          "y": 24
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT callsign, flight_date, source, coverage_pct, total_length_m/1000 AS route_km FROM flight_coverage ORDER BY updated_at DESC LIMIT 50",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "sortBy": [
-            {
-              "desc": true,
-              "displayName": "updated_at"
-            }
-          ]
-        },
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "route_km"
-              },
-              "properties": [
-                {
-                  "id": "unit",
-                  "value": "km"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      {
-        "id": 11,
-        "title": "Airline Ranking",
-        "type": "bargauge",
-        "gridPos": {
-          "h": 12,
-          "w": 8,
-          "x": 0,
-          "y": 36
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' ORDER BY avg_coverage_pct DESC",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "displayMode": "basic",
-          "orientation": "horizontal",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "showUnfilled": true
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 12,
-        "title": "Coverage by Period",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 48
-        },
-        "collapsed": false,
-        "panels": []
-      },
-      {
-        "id": 13,
-        "title": "1 Year Coverage",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 0,
-          "y": 49
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT avg(avg_coverage_pct) AS value FROM airline_coverage WHERE time_period = '1year'",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 14,
-        "title": "2 Years Coverage",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 8,
-          "y": 49
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT avg(avg_coverage_pct) AS value FROM airline_coverage WHERE time_period = '2years'",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      },
-      {
-        "id": 15,
-        "title": "5 Years Coverage",
-        "type": "stat",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 16,
-          "y": 49
-        },
-        "targets": [
-          {
-            "datasource": {
-              "uid": "postgres-public"
-            },
-            "format": "table",
-            "rawSql": "SELECT avg(avg_coverage_pct) AS value FROM airline_coverage WHERE time_period = '5years'",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": ["lastNotNull"],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percent",
-            "min": 0,
-            "max": 100,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 30
-                },
-                {
-                  "color": "green",
-                  "value": 70
-                }
-              ]
-            }
-          },
-          "overrides": []
-        }
-      }
-    ],
-    "templating": {
-      "list": [
+  "uid": "acars-coverage",
+  "title": "ACARS Coverage Dashboard",
+  "tags": ["acars", "coverage"],
+  "timezone": "browser",
+  "editable": false,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "All Flights",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 3, "x": 0, "y": 0},
+      "targets": [
         {
-          "name": "time_period",
-          "type": "custom",
-          "current": {
-            "selected": true,
-            "text": "all",
-            "value": "all"
-          },
-          "options": [
-            {
-              "selected": true,
-              "text": "all",
-              "value": "all"
-            },
-            {
-              "selected": false,
-              "text": "1year",
-              "value": "1year"
-            },
-            {
-              "selected": false,
-              "text": "2years",
-              "value": "2years"
-            },
-            {
-              "selected": false,
-              "text": "5years",
-              "value": "5years"
-            }
-          ],
-          "query": "all,1year,2years,5years",
-          "skipUrlSync": false
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"All Flights\" FROM flight_coverage;"
         }
       ]
     },
-    "time": {
-      "from": "now-6h",
-      "to": "now"
+    {
+      "id": 2,
+      "title": "Airlines",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 3, "x": 3, "y": 0},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT airline_code) AS \"Airlines\" FROM airline_coverage WHERE time_period = 'all';"
+        }
+      ]
     },
-    "timepicker": {},
-    "schemaVersion": 36,
-    "version": 1
-  }
+    {
+      "id": 3,
+      "title": "Overall Coverage %",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 3, "x": 6, "y": 0},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Overall Coverage %\" FROM airline_coverage WHERE time_period = 'all';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 30},
+              {"color": "green", "value": 70}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Active Flights (10 min)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 3, "x": 9, "y": 0},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT callsign) AS \"Active Flights\" FROM tracks WHERE track_timestamp > now() - interval '10 min' AND callsign IS NOT NULL;"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Coverage Map",
+      "type": "geomap",
+      "gridPos": {"h": 16, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT code AS name, ST_AsText(buffer) AS geom FROM acars_stations;",
+          "refId": "A"
+        },
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT icao24, callsign, altitude, ST_AsText(point) AS geom FROM tracks WHERE track_timestamp > now() - interval '10 min' AND point IS NOT NULL LIMIT 1000;",
+          "refId": "B"
+        },
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT code, city, ST_AsText(location) AS geom FROM acars_stations;",
+          "refId": "C"
+        }
+      ],
+      "layers": [
+        {
+          "id": "buffers",
+          "type": "markers",
+          "name": "Station Buffers",
+          "config": {
+            "dataFrame": "A",
+            "geomField": "geom",
+            "style": {
+              "fillColor": "#00BFFF",
+              "fillOpacity": 0.15,
+              "lineColor": "#00BFFF",
+              "lineWidth": 1
+            }
+          }
+        },
+        {
+          "id": "tracks",
+          "type": "markers",
+          "name": "Active Tracks",
+          "config": {
+            "dataFrame": "B",
+            "geomField": "geom",
+            "style": {
+              "markerSize": 6,
+              "colorBy": "callsign"
+            }
+          }
+        },
+        {
+          "id": "stations",
+          "type": "markers",
+          "name": "Stations",
+          "config": {
+            "dataFrame": "C",
+            "geomField": "geom",
+            "style": {
+              "markerType": "star",
+              "markerColor": "#FF0000",
+              "markerSize": 14
+            },
+            "tooltip": {
+              "fields": ["code", "city"]
+            }
+          }
+        }
+      ],
+      "map": {
+        "center": {"lat": 55, "lng": 55, "zoom": 3}
+      }
+    },
+    {
+      "id": 6,
+      "title": "Coverage by Airline",
+      "type": "bargauge",
+      "gridPos": {"h": 16, "w": 6, "x": 12, "y": 4},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' AND avg_coverage_pct IS NOT NULL ORDER BY avg_coverage_pct DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayMode": "gradient",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 30},
+              {"color": "green", "value": 70}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Flight Count by Source",
+      "type": "piechart",
+      "gridPos": {"h": 16, "w": 6, "x": 18, "y": 4},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT fc.source, count(*) AS value\nFROM flight_coverage fc\n  JOIN airline_coverage ac ON substring(fc.callsign from 1 for 3) = ac.airline_code\nWHERE ac.time_period = '$time_period'\nGROUP BY fc.source;"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Coverage % over Time",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT hour AS time, avg_coverage_pct AS value FROM coverage_history ORDER BY hour;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Tracks per Source over Time",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroup(track_timestamp, '1m') AS time, source, count(*) AS value\nFROM tracks\nWHERE $__timeFilter(track_timestamp) AND source IS NOT NULL\nGROUP BY time, source\nORDER BY time;"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "value",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "stacking": {"mode": "normal"}
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "source"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "{{source}}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "title": "Recent Flights",
+      "type": "table",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 30},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT callsign, flight_date, source, coverage_pct, total_length_m/1000 AS route_km\nFROM flight_coverage\nWHERE total_length_m > 0\nORDER BY updated_at DESC\nLIMIT 50;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "from": 0,
+                "to": 0,
+                "result": {"text": "N/A", "color": "gray"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Airline Ranking",
+      "type": "bargauge",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 30},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT airline_code, avg_coverage_pct FROM airline_coverage WHERE time_period = '$time_period' AND avg_coverage_pct IS NOT NULL ORDER BY avg_coverage_pct DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayMode": "basic",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 30},
+              {"color": "green", "value": 70}
+            ]
+          },
+          "reverse": true
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Coverage 1 Year",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 40},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 1 Year\" FROM airline_coverage WHERE time_period = '1year';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Coverage 2 Years",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 40},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 2 Years\" FROM airline_coverage WHERE time_period = '2years';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Coverage 5 Years",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 40},
+      "targets": [
+        {
+          "datasource": {"uid": "postgres-public", "type": "postgres"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(avg(avg_coverage_pct), 0) AS \"Coverage 5 Years\" FROM airline_coverage WHERE time_period = '5years';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "time_period",
+        "type": "custom",
+        "query": "all,1year,2years,5years",
+        "current": {"value": "all", "text": "All"},
+        "default": "all",
+        "hide": 0,
+        "label": "Time Period",
+        "options": [
+          {"text": "All", "value": "all"},
+          {"text": "1 Year", "value": "1year"},
+          {"text": "2 Years", "value": "2years"},
+          {"text": "5 Years", "value": "5years"}
+        ]
+      }
+    ]
+  },
+  "schemaVersion": 30,
+  "version": 1
 }

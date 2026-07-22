@@ -15,6 +15,7 @@ providers:
     folder: 'ACARS'
     type: file
     disableDeletion: false
+    updateIntervalSeconds: 10
     editable: false
     options:
       path: /etc/grafana/provisioning/dashboards
