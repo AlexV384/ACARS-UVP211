@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from db.connection import get_pool
-from config import AIRLINE_ICAO_CODES
+from config import AIRLINE_ICAO_CODES, AIRLINE_IATA_CODES
 
 
 @dataclass
@@ -33,21 +33,22 @@ WITH periods AS (
     UNION ALL SELECT '2years', CURRENT_DATE - INTERVAL '2 years'
     UNION ALL SELECT '5years', CURRENT_DATE - INTERVAL '5 years'
 ),
-airlines AS (
-    SELECT unnest($1::text[]) AS code
+airline_pairs AS (
+    SELECT icao, iata
+    FROM unnest($1::text[], $2::text[]) AS t(icao, iata)
 ),
 stats AS (
-    SELECT a.code,
+    SELECT ap.icao AS code,
            p.tp,
            COUNT(fc.callsign)::int AS total_flights,
            AVG(fc.coverage_pct)      AS avg_coverage_pct
-    FROM airlines a
+    FROM airline_pairs ap
     CROSS JOIN periods p
     LEFT JOIN flight_coverage fc
-        ON LEFT(fc.callsign, 3) = a.code
+        ON (LEFT(fc.callsign, 3) = ap.icao OR LEFT(fc.callsign, 2) = ap.iata)
        AND (p.min_date IS NULL OR fc.flight_date >= p.min_date)
        AND fc.total_length_m > 0
-    GROUP BY a.code, p.tp
+    GROUP BY ap.icao, p.tp
 )
 INSERT INTO airline_coverage (airline_code, time_period, total_flights, avg_coverage_pct, updated_at)
 SELECT code, tp, total_flights, avg_coverage_pct, NOW()
@@ -63,7 +64,7 @@ async def update_airline_coverage() -> list[AirlineCoverage]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         await ensure_table(conn)
-        await conn.execute(_UPDATE_AIRLINE_COVERAGE_SQL, AIRLINE_ICAO_CODES)
+        await conn.execute(_UPDATE_AIRLINE_COVERAGE_SQL, AIRLINE_ICAO_CODES, AIRLINE_IATA_CODES)
         rows = await conn.fetch(
             "SELECT airline_code, total_flights, avg_coverage_pct, time_period, updated_at "
             "FROM airline_coverage ORDER BY airline_code, time_period"

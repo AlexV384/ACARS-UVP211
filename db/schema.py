@@ -38,6 +38,37 @@ CREATE INDEX IF NOT EXISTS idx_tracks_point ON tracks USING GIST (point);
 CREATE INDEX IF NOT EXISTS idx_tracks_callsign ON tracks (callsign);
 CREATE INDEX IF NOT EXISTS idx_tracks_timestamp ON tracks (track_timestamp);
 CREATE INDEX IF NOT EXISTS idx_acars_stations_location ON acars_stations USING GIST (location);
+
+CREATE TABLE IF NOT EXISTS station_coverage (
+    id INT PRIMARY KEY DEFAULT 1,
+    geom GEOMETRY(MultiPolygon, 4326),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS flight_coverage (
+    callsign TEXT,
+    flight_date DATE,
+    source TEXT,
+    coverage_pct DOUBLE PRECISION,
+    total_length_m DOUBLE PRECISION,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (callsign, flight_date)
+);
+
+CREATE TABLE IF NOT EXISTS airline_coverage (
+    airline_code TEXT,
+    time_period TEXT,
+    total_flights INT,
+    avg_coverage_pct DOUBLE PRECISION,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (airline_code, time_period)
+);
+
+CREATE TABLE IF NOT EXISTS coverage_history (
+    hour TIMESTAMPTZ PRIMARY KEY,
+    avg_coverage_pct DOUBLE PRECISION,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 """
 
 

@@ -13,7 +13,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 async def main():
     ensure_postgis_sync()
-    if not await wait_for_db(get_pool):
+    if not await wait_for_db():
         print("Could not connect to PostgreSQL. Check docker logs and try again.")
         sys.exit(1)
     pool = await get_pool()

@@ -13,6 +13,9 @@ from db.writer import write_tracks
 
 from docker_utils import ensure_postgis_sync, wait_for_db
 from models.track import Track
+from models.flight_coverage import update_all_coverage
+
+COVERAGE_EVERY_N_CYCLES = 6
 
 
 async def collect_all(pool, collectors: list):
@@ -43,7 +46,7 @@ async def collect_all(pool, collectors: list):
 
 async def main():
     ensure_postgis_sync()
-    if not await wait_for_db(get_pool):
+    if not await wait_for_db():
         print("Could not connect to PostgreSQL. Check docker logs and try again.")
         sys.exit(1)
     pool = await get_pool()
@@ -57,15 +60,29 @@ async def main():
     COLLECTORS.append(collector2)
     COLLECTORS.append(collector3)
 
-    print(f"starting collector loop, interval={COLLECT_INTERVAL}s")
-    while True:
-        t0 = time.monotonic()
+    print(f"starting collector loop, interval={COLLECT_INTERVAL}s, coverage every {COVERAGE_EVERY_N_CYCLES} cycles")
+    cycle = 1
+    try:
+        while True:
+            t0 = time.monotonic()
 
-        await collect_all(pool, COLLECTORS)
+            await collect_all(pool, COLLECTORS)
 
-        elapsed = time.monotonic() - t0
-        sleep = max(0, COLLECT_INTERVAL - elapsed)
-        await asyncio.sleep(sleep)
+            cycle += 1
+            if cycle % COVERAGE_EVERY_N_CYCLES == 0:
+                print("[coverage] updating flight_coverage, airline_coverage, coverage_history...")
+                try:
+                    await update_all_coverage(
+                        on_progress=lambda done, total: print(f"  flight_coverage: {done}/{total}")
+                    )
+                except Exception as e:
+                    print(f"  coverage update failed: {e}")
+
+            elapsed = time.monotonic() - t0
+            sleep = max(0, COLLECT_INTERVAL - elapsed)
+            await asyncio.sleep(sleep)
+    finally:
+        await pool.close()
 
 
 if __name__ == "__main__":

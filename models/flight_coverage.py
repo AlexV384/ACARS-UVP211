@@ -107,6 +107,14 @@ async def update_all_coverage(
             if on_progress:
                 on_progress(min(i + batch_size, total), total)
 
+    from models.airline_coverage import update_airline_coverage
+    from models.coverage_history import update_coverage_history
+
+    await update_airline_coverage()
+    await update_coverage_history()
+    if on_progress:
+        on_progress(total, total)
+
 
 if __name__ == '__main__':
     asyncio.run(update_all_coverage(on_progress=lambda done, total: print(f"{done}/{total}")))
