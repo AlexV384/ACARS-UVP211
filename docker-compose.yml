@@ -55,6 +55,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: acars
       GF_AUTH_ANONYMOUS_ENABLED: true
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID: acars-coverage
     extra_hosts:
       - "host.docker.internal:host-gateway"

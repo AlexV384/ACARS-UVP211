@@ -2,6 +2,7 @@ import asyncio
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 COMPOSE_FILE = "docker-compose.yml"
@@ -47,13 +48,13 @@ def _stop_old_monitoring():
         _run(["docker", "compose", "-f", old, "down"])
 
 
-async def wait_for_db(pool_factory, host: str = "localhost", port: int = 5432, timeout: float = 60.0):
+async def wait_for_db(host: str = "localhost", port: int = 5432, timeout: float = 60.0):
     import asyncpg
     from config import DB_CONFIG
 
-    t0 = asyncio.get_event_loop().time()
+    t0 = time.monotonic()
     last_err = None
-    while asyncio.get_event_loop().time() - t0 < timeout:
+    while time.monotonic() - t0 < timeout:
         try:
             conn = await asyncpg.connect(**DB_CONFIG, timeout=5)
             await conn.close()

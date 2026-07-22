@@ -2,7 +2,7 @@ import asyncio
 import time
 import httpx
 from collectors.base import BaseCollector, RawTrack, is_valid_callsign
-from config import AIRLINE_ICAO_CODES
+from config import AIRLINE_ICAO_CODES, AIRLINE_IATA_CODES
 
 
 OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
@@ -69,8 +69,7 @@ class OpenSkyCollector(BaseCollector):
             if not is_valid_callsign(callsign):
                 continue
 
-            prefix = callsign[:3].upper()
-            if prefix not in AIRLINE_ICAO_CODES:
+            if callsign[:3].upper() not in AIRLINE_ICAO_CODES and callsign[:2].upper() not in AIRLINE_IATA_CODES:
                 continue
 
             lat = state[6]

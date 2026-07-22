@@ -31,5 +31,5 @@ datasources:
       password: acars
     jsonData:
       database: acars
-      sslMode: disable
+      sslmode: disable
       postgresVersion: 1500
