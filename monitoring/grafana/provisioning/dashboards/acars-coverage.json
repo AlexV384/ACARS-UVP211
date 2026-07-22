@@ -284,60 +284,6 @@
           "values": ["value", "percent"]
         }
       }
-    },
-    {
-      "id": 5,
-      "title": "Карта покрытия",
-      "type": "geomap",
-      "gridPos": {"h": 16, "w": 24, "x": 0, "y": 46},
-      "targets": [
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT code, city, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM acars_stations;",
-          "refId": "A"
-        },
-        {
-          "datasource": {"uid": "postgres-public", "type": "postgres"},
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT icao24, callsign, altitude, ST_X(point::geometry) AS longitude, ST_Y(point::geometry) AS latitude FROM tracks WHERE track_timestamp > now() - interval '10 min' AND point IS NOT NULL LIMIT 1000;",
-          "refId": "B"
-        }
-      ],
-      "layers": [
-        {
-          "type": "markers",
-          "name": "Stations",
-          "config": {
-            "dataFrame": "A",
-            "latitudeField": "latitude",
-            "longitudeField": "longitude",
-            "style": {
-              "color": "#FF0000",
-              "size": 10
-            },
-            "tooltip": true
-          }
-        },
-        {
-          "type": "markers",
-          "name": "Active Tracks",
-          "config": {
-            "dataFrame": "B",
-            "latitudeField": "latitude",
-            "longitudeField": "longitude",
-            "style": {
-              "size": 5,
-              "color": "#FFFF00"
-            }
-          }
-        }
-      ],
-      "map": {
-        "center": {"lat": 55, "lng": 55, "zoom": 3}
-      }
     }
   ],
   "templating": {
@@ -360,5 +306,5 @@
     ]
   },
   "schemaVersion": 30,
-  "version": 1
+  "version": 99
 }
