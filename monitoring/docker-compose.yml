@@ -33,13 +33,10 @@ services:
       - monitoring
     ports:
       - "3000:3000"
-      - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_USER: developer
       GF_SECURITY_ADMIN_PASSWORD: acars
-      GF_AUTH_ANONYMOUS_ENABLED: true
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID: acars-coverage
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_UID: server-status
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
