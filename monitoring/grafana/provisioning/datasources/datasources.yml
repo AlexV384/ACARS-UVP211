@@ -20,3 +20,16 @@ datasources:
       database: acars
       sslmode: disable
       postgresVersion: 1500
+
+  - name: PostgreSQL Public
+    type: postgres
+    access: proxy
+    uid: postgres-public
+    url: host.docker.internal:5432
+    user: acars
+    secureJsonData:
+      password: acars
+    jsonData:
+      database: acars
+      sslMode: disable
+      postgresVersion: 1500
